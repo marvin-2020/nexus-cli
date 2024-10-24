@@ -25,7 +25,24 @@ type strSorter struct {
 	cmp  func(str1, str2 string) bool
 }
 
-func extractNumberFromString(str string) (num int) {
+// str like 0.2.77.20240520-184-g17ff52e
+func extractNumberFromString(str string) (num uint64) {
+	index := strings.LastIndex(str, "-")
+	if index > 0 {
+		str = str[0:index]
+	}
+	lastSuf := ""
+	index = strings.LastIndex(str, "-")
+	if index > 0 {
+		lastSuf = str[index+1:]
+		str = str[0:index]
+	}
+	strSliceLastSuf := make([]string, 0)
+	for _, v := range lastSuf {
+		if unicode.IsDigit(v) {
+			strSliceLastSuf = append(strSliceLastSuf, string(v))
+		}
+	}
 	strSlice := make([]string, 0)
 	for _, v := range str {
 		if unicode.IsDigit(v) {
@@ -36,14 +53,20 @@ func extractNumberFromString(str string) (num int) {
 	// If the tag was all non-digits, the strSlice would be empty (e.g., 'latest')
 	// therefore just throw it to the end (1 << 32 is maxint)
 	if len(strSlice) == 0 {
-		return 1 << 32
+		return 1 << 63
 	}
 
-	num, err := strconv.Atoi(strings.Join(strSlice, ""))
+	num, err := strconv.ParseUint(strings.Join(strSlice, ""), 10, 64)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(str, " strSlice ", num)
+		log.Println(err)
 	}
-	return num
+	num2, err := strconv.ParseUint(strings.Join(strSliceLastSuf, ""), 10, 64)
+	if err != nil {
+		log.Println(str, " strSliceLastSuf ", num2)
+		log.Println(err)
+	}
+	return num + num2
 }
 
 func (s *strSorter) Len() int { return len(s.strs) }
